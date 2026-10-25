@@ -22,10 +22,10 @@
 - **内存**：最低 128MB，推荐 256MB 及以上
 - **网络**：路由器需能正常联网以拉取脚本及所需软件包
 
-## 一键运行（jsDelivr Fastly CDN）
+## 一键运行（jsDelivr Gcore CDN）
 
-为避免国内路由器直连 GitHub 失败，以及 `cdn.jsdelivr.net`（Cloudflare）节点断流导致脚本损坏，请使用下方 **Fastly** 加速地址（已固定到当前最新提交，避免 `@main` 旧缓存）在路由器 SSH 终端执行：
+为避免国内路由器直连 GitHub 失败，以及 `cdn.jsdelivr.net`（Cloudflare）断流损坏文件、`fastly.jsdelivr.net` 的 `@main` 旧缓存长期不更新，请使用下方 **Gcore** 加速地址在路由器 SSH 终端执行：
 
 ```sh
-rm -f /tmp/openwrt-WIFI.sh && wget -O /tmp/openwrt-WIFI.sh https://fastly.jsdelivr.net/gh/Firefly-Moon/openwrt-WIFI@ab08d6c25e4ad69c4c4eaf0498b98cfbfa169a5f/openwrt-WIFI.sh && sh /tmp/openwrt-WIFI.sh
+rm -f /tmp/openwrt-WIFI.sh && wget -O /tmp/openwrt-WIFI.sh https://gcore.jsdelivr.net/gh/Firefly-Moon/openwrt-WIFI@main/openwrt-WIFI.sh && sh /tmp/openwrt-WIFI.sh
 ```
