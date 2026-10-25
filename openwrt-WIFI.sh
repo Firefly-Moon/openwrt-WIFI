@@ -1,6 +1,4 @@
 #!/bin/sh
-# 在 OpenWrt / Kwrt 上创建独立 WiFi，并把该网段的访问控制绑定到一条 VLESS Reality 节点。
-# 只接受主机名为 www.<字母>.diandongyun.org 的 vless 链接。
 
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
@@ -54,7 +52,6 @@ bin_has() {
 }
 
 chinese_bytes() {
-	# 「中」的 UTF-8 是 e4 b8 ad。这台系统没有 od，用 hexdump。
 	if command -v hexdump >/dev/null 2>&1; then
 		printf '中' | hexdump -v -e '1/1 "%02x"'
 		return 0
@@ -67,8 +64,6 @@ chinese_bytes() {
 }
 
 ensure_cli_chinese() {
-	# 交互发生在当前 shell。LuCI 的 zh-cn 语言包只翻译网页，不改变命令行输出。
-	# 这套固件没有可安装的命令行中文 locale，提示语按 UTF-8 字节直接发给终端。
 	export LANG=C.UTF-8
 	export LC_ALL=C.UTF-8
 	echo "检查当前命令行能否输出简体中文..."
@@ -267,7 +262,6 @@ pick_names() {
 		[a-z]*) ;;
 		*) IFACE="w${IFACE}" ;;
 	esac
-	# 桥设备名是 br-接口名。Linux 网卡名最长 15，所以接口名最多 12。
 	IFACE=$(printf '%s' "$IFACE" | cut -c 1-12)
 	[ -n "$IFACE" ] || fail "无法从 WiFi 名称生成接口名"
 	base_iface=$IFACE
