@@ -1,4 +1,6 @@
 #!/bin/sh
+# 在 OpenWrt / Kwrt 上创建独立 WiFi，并把该网段的访问控制绑定到一条 VLESS Reality 节点。
+# 只接受主机名为 www.<字母>.diandongyun.org 的 vless 链接。
 
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
@@ -52,6 +54,7 @@ bin_has() {
 }
 
 chinese_bytes() {
+	# 「中」的 UTF-8 是 e4 b8 ad。这台系统没有 od，用 hexdump。
 	if command -v hexdump >/dev/null 2>&1; then
 		printf '中' | hexdump -v -e '1/1 "%02x"'
 		return 0
@@ -64,6 +67,8 @@ chinese_bytes() {
 }
 
 ensure_cli_chinese() {
+	# 交互发生在当前 shell。LuCI 的 zh-cn 语言包只翻译网页，不改变命令行输出。
+	# 这套固件没有可安装的命令行中文 locale，提示语按 UTF-8 字节直接发给终端。
 	export LANG=C.UTF-8
 	export LC_ALL=C.UTF-8
 	echo "检查当前命令行能否输出简体中文..."
@@ -109,6 +114,13 @@ ensure_components() {
 		fi
 	fi
 	echo "PassWall 与 Xray（VLESS Reality）已就绪: $xray_bin"
+
+	# VLESS Reality 下 PassWall 的 dns_mode=xray 会把 DNS 问成空应答，手机显示无网络。
+	# 改用 dns2socks，经节点 SOCKS 访问 1.1.1.1。
+	if ! command -v dns2socks >/dev/null 2>&1 && [ ! -x /usr/bin/dns2socks ]; then
+		opkg_install dns2socks
+	fi
+	command -v dns2socks >/dev/null 2>&1 || [ -x /usr/bin/dns2socks ] || fail "未安装 dns2socks，无法为隔离 WiFi 提供可用 DNS"
 }
 
 ask_inputs() {
@@ -262,6 +274,7 @@ pick_names() {
 		[a-z]*) ;;
 		*) IFACE="w${IFACE}" ;;
 	esac
+	# 桥设备名是 br-接口名。Linux 网卡名最长 15，所以接口名最多 12。
 	IFACE=$(printf '%s' "$IFACE" | cut -c 1-12)
 	[ -n "$IFACE" ] || fail "无法从 WiFi 名称生成接口名"
 	base_iface=$IFACE
@@ -416,6 +429,14 @@ configure_wifi() {
 	uci set firewall.@rule[-1].proto='tcp'
 	uci set firewall.@rule[-1].target='REJECT'
 
+	# 网关不提供 DoT。拒绝 853 可让安卓尽快回退到普通 DNS，避免卡住连通性检测。
+	uci add firewall rule >/dev/null
+	uci set firewall.@rule[-1].name="block_${IFACE}_dot"
+	uci set firewall.@rule[-1].src="${IFACE}"
+	uci set firewall.@rule[-1].dest_port='853'
+	uci set firewall.@rule[-1].proto='tcp'
+	uci set firewall.@rule[-1].target='REJECT'
+
 	n=0
 	while uci -q get "wireless.wifinet${n}" >/dev/null 2>&1; do
 		n=$((n + 1))
@@ -432,7 +453,8 @@ configure_wifi() {
 	uci set "wireless.${WIFINET}.key=${WIFI_PASS}"
 	uci set "wireless.${WIFINET}.isolate=1"
 	uci set "wireless.${WIFINET}.wmm=1"
-	uci set "wireless.${WIFINET}.disabled=0"
+	# 先禁用，等 PassWall ACL/DNS 就绪后再打开，避免手机抢先连上后 DNS 超时被标成无网络。
+	uci set "wireless.${WIFINET}.disabled=1"
 }
 
 configure_acl() {
@@ -460,10 +482,14 @@ configure_acl() {
 	uci set passwall.@acl_rule[-1].use_gfw_list='0'
 	uci set passwall.@acl_rule[-1].chn_list='0'
 	uci set passwall.@acl_rule[-1].dns_shunt='dnsmasq'
-	uci set passwall.@acl_rule[-1].dns_mode='xray'
-	uci set passwall.@acl_rule[-1].v2ray_dns_mode='tcp'
+	# dns_mode=xray 在 VLESS Reality 下会返回空 DNS 应答，手机显示无网络。
+	uci set passwall.@acl_rule[-1].dns_mode='dns2socks'
 	uci set passwall.@acl_rule[-1].remote_dns='1.1.1.1'
-	uci set passwall.@acl_rule[-1].filter_proxy_ipv6='1'
+	uci -q delete passwall.@acl_rule[-1].v2ray_dns_mode
+	uci -q delete passwall.@acl_rule[-1].remote_dns_doh
+	# 不要开 filter_proxy_ipv6：PassWall 会写 address=/#/::，把 A 记录一并弄没。
+	# 本脚本已关接口 IPv6 / DHCPv6 / RA，足够防 IPv6 绕过。
+	uci set passwall.@acl_rule[-1].filter_proxy_ipv6='0'
 	uci set passwall.@acl_rule[-1].use_default_dns='remote'
 }
 
@@ -540,8 +566,27 @@ apply_htmode() {
 	return 1
 }
 
+wait_passwall_ready() {
+	echo "等待 PassWall ACL 与 DNS 就绪..."
+	n=0
+	while [ "$n" -lt 45 ]; do
+		if ps w 2>/dev/null | grep -q '[d]ns2socks' && grep -q "【${SSID}】" /tmp/log/passwall.log 2>/dev/null; then
+			sleep 1
+			return 0
+		fi
+		n=$((n + 1))
+		sleep 1
+	done
+	return 1
+}
+
 apply_and_refresh() {
 	echo "正在保存并刷新接口、无线、防火墙和 PassWall..."
+	# 开机延时会拖垮首次 ACL/DNS，手机连上时还没有可用解析。
+	for sec in $(uci show passwall 2>/dev/null | sed -n "s/^passwall\.\([^=]*\)=global_delay$/\1/p"); do
+		uci set "passwall.${sec}.start_delay=1"
+	done
+
 	uci commit network
 	uci commit wireless
 	uci commit dhcp
@@ -559,8 +604,14 @@ apply_and_refresh() {
 		sleep 1
 	done
 	bridge_up || fail "接口 br-${IFACE} 没有起来。网卡名最长 15 个字符，请查看 logread"
-	apply_htmode || fail "配置已写入，但 ${SSID} 没有起来。请查看 logread"
+
+	# 先起 PassWall，再放开 WiFi，避免手机在 DNS 未就绪时完成连通性检测并被标成无网络。
 	/etc/init.d/passwall restart
+	wait_passwall_ready || fail "PassWall ACL/DNS 未就绪。请查看 /tmp/log/passwall.log"
+
+	uci set "wireless.${WIFINET}.disabled=0"
+	uci commit wireless
+	apply_htmode || fail "配置已写入，但 ${SSID} 没有起来。请查看 logread"
 	/sbin/reload_config
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache
@@ -582,7 +633,7 @@ print_summary() {
 	echo "3. 未进入节点的流量不允许转发到 WAN，避免家庭宽带地址泄露，防止节点中断时该 WiFi 自动换成家庭宽带，造成连接暴露。"
 	echo "4. TCP、UDP 和 DNS 全部从 ${NODE_REMARKS} 出去，网页、视频、DNS 和 WebRTC/STUN 使用同一出口，避免国内 DNS 或随机 UDP 绕过代理后读到家庭宽带地址杜绝DNS泄露。"
 	echo "5. 直连列表、代理列表、屏蔽列表、GFW 列表、中国列表都关闭，并且不继承 PassWall 全局配置，避免全局规则或国内分流把一部分网站留在家庭网络。"
-	echo "6. 关闭该接口的 IPv6，并丢弃代理返回的 IPv6，避免 IPv6 绕过 IPv4 代理，暴露家庭网络的 IPv6 地址。"
+	echo "6. 关闭该接口的 IPv6、DHCPv6 与 RA，避免手机拿到 IPv6 后绕过 IPv4 代理；不启用 PassWall 的 filter_proxy_ipv6，以免 DNS 被写成 address=/#/:: 导致手机解析失败、显示无互联网。"
 	echo "7. 拒绝该 WiFi 访问路由器的 22、80、443、7681 端口，连上 ${SSID} 的设备打不开后台，避免探测或误入管理页面。"
 	echo "8. 信道宽度使用当前能够启动的最高档 ${HTMODE}，提高多台设备同时使用时的速率。"
 	echo "======================================"
