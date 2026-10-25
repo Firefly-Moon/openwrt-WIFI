@@ -27,11 +27,5 @@
 为避免国内路由器无法直接连接 GitHub，请使用下方带 **jsDelivr CDN** 加速的一键命令在路由器 SSH 终端中执行：
 
 ```sh
-wget -O /tmp/openwrt-WIFI.sh https://cdn.jsdelivr.net/gh/taozi00001/openwrt-WIFI/openwrt-WIFI.sh && sh /tmp/openwrt-WIFI.sh
-```
-
-兼容旧文件名调用命令：
-
-```sh
-wget -O /tmp/openwrt-tiktok-wifi.sh https://cdn.jsdelivr.net/gh/taozi00001/openwrt-WIFI/openwrt-tiktok-wifi.sh && sh /tmp/openwrt-tiktok-wifi.sh
+wget -O /tmp/openwrt-WIFI.sh https://cdn.jsdelivr.net/gh/Firefly-Moon/openwrt-WIFI/openwrt-WIFI.sh && sh /tmp/openwrt-WIFI.sh
 ```
