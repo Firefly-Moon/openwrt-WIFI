@@ -142,7 +142,7 @@ ask_inputs() {
 	printf '3. 请输入 WiFi 密码，8 到 63 位英文字符，不要包含引号、反斜杠、美元符号或反引号。（\033[1;31m禁止使用中文\033[0m）\n'
 	printf "WiFi 密码: "
 	read -r WIFI_PASS
-	WIFI_PASS=$(printf '%s' "$WIFI_PASS" | tr -d '\r')ok
+	WIFI_PASS=$(printf '%s' "$WIFI_PASS" | tr -d '\r')
 	pass_len=${#WIFI_PASS}
 	[ "$pass_len" -ge 8 ] && [ "$pass_len" -le 63 ] || fail "WiFi 密码需要 8 到 63 位"
 	printf '%s' "$WIFI_PASS" | grep -q '[^ -~]' && fail "WiFi 密码请使用英文字符"
