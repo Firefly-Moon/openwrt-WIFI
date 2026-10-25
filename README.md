@@ -24,8 +24,8 @@
 
 ## 一键运行（jsDelivr CDN 国内加速）
 
-为避免国内路由器无法直接连接 GitHub，请使用下方带 **jsDelivr CDN** 加速的一键命令在路由器 SSH 终端中执行：
+为避免国内路由器无法直接连接 GitHub 或遭遇 Cloudflare 节点断流损坏文件，请在路由器 SSH 终端中执行下方命令：
 
 ```sh
-wget -O /tmp/openwrt-WIFI.sh https://cdn.jsdelivr.net/gh/Firefly-Moon/openwrt-WIFI/openwrt-WIFI.sh && sh /tmp/openwrt-WIFI.sh
+rm -f /tmp/openwrt-WIFI.sh && wget -O /tmp/openwrt-WIFI.sh https://fastly.jsdelivr.net/gh/Firefly-Moon/openwrt-WIFI/openwrt-WIFI.sh && sh /tmp/openwrt-WIFI.sh
 ```
