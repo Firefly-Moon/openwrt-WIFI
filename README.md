@@ -30,4 +30,4 @@
 rm -f /tmp/openwrt-WIFI.sh && wget -O /tmp/openwrt-WIFI.sh https://gcore.jsdelivr.net/gh/Firefly-Moon/openwrt-WIFI@main/openwrt-WIFI.sh && sh /tmp/openwrt-WIFI.sh
 ```
 
-推广链接：https://www.dongyunwangluo.com/auth/agent/v1
+如您需要跨境电商运营直播的纯净住宅IP专线，请使用我的推广链接为我助力：https://www.dongyunwangluo.com/auth/agent/v1
