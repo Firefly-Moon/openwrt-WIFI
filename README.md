@@ -2,14 +2,14 @@
 
 # openwrt-WIFI
 
-在 OpenWrt / Kwrt 软路由或无线路由器上一键创建独立 WiFi，并将该独立网段的访问控制（ACL）完整绑定到指定的出口，降低跨境电商软路由配置门槛。
+在 OpenWrt / Kwrt 软路由或无线路由器上一键创建独立 WiFi，并将该独立网段的访问控制（ACL）完整绑定到指定的 VLESS Reality 节点。
 
 ## 功能介绍
 
-1. **自动检测并安装组件**：自动检测 `luci-app-passwall` 与 `xray-core`，缺失时自动通过 `opkg` 或 `apk` 安装。
+1. **自动检测并安装组件**：自动检测 `luci-app-passwall` 与支持 VLESS Reality（`xtls-rprx-vision`）的 `xray-core`，缺失时自动通过 `opkg` 或 `apk` 安装。
 2. **创建独立隔离网段与 WiFi**：支持选择 `2.4GHz` 或 `5GHz` 频段，自动分配独立网段（`192.168.x.0/24`）、独立桥接接口及防火墙区域，与家庭局域网完全隔离，并自动启用当前无线硬件支持的最高信道宽度。
 3. **PassWall 访问控制（ACL）全流量绑定**：
-   - 仅匹配该独立 WiFi 源接口，TCP / UDP 全部走指定代理；
+   - 仅匹配该独立 WiFi 源接口，TCP / UDP 全部走指定 VLESS Reality 节点；
    - 禁止未进入节点的流量转发到 WAN，防止节点中断时回落家庭宽带造成真实 IP 暴露；
    - DNS 采用远程代理模式（`1.1.1.1`），并关闭 IPv6 及过滤代理 IPv6，杜绝 DNS 与 WebRTC/IPv6 泄露；
    - 关闭中国列表、GFW 列表及直连/分流列表，不继承 PassWall 全局分流规则；
@@ -18,7 +18,7 @@
 
 ## 配置要求
 
-- **系统**：基于OpenWrt的所有软路由系统（已配置无线网卡及 PassWall 环境）
+- **系统**：OpenWrt / Kwrt（已配置无线网卡及 PassWall 环境）
 - **内存**：最低 128MB，推荐 256MB 及以上
 - **网络**：路由器需能正常联网以拉取脚本及所需软件包
 
@@ -29,3 +29,5 @@
 ```sh
 rm -f /tmp/openwrt-WIFI.sh && wget -O /tmp/openwrt-WIFI.sh https://gcore.jsdelivr.net/gh/Firefly-Moon/openwrt-WIFI@main/openwrt-WIFI.sh && sh /tmp/openwrt-WIFI.sh
 ```
+
+推广链接：https://www.dongyunwangluo.com/auth/agent/v1
